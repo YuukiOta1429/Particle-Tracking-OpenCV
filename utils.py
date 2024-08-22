@@ -44,48 +44,57 @@ def ReadGrayImg(SrcPath, show=False):
 
 def IMG2MP4(SrcFolder, OutFolder="./Export", OutName="test", FPS=5):
     """
-    Convert sequential TIFs images into AVI clip format.
+    Convert sequential images into MP4 clip format.
 
     Args:
-        SrcFolder: (str) input folder locaiton (picture file)
+        SrcFolder: (str) input folder location (picture files)
         OutFolder: (str) output folder location (video file)
-        OutName: (str) AVI clip name
-        FPS: (int) frame per seonds
+        OutName: (str) MP4 clip name
+        FPS: (int) frames per second
     """
     print(f"Converting to MP4...{OutName}")
-    FPS = int(FPS)  # Frame per seconds
+    FPS = int(FPS)  # Frames per second
     SrcFolder = str(SrcFolder)
     OutFolder = str(OutFolder)
     video_name = f'{OutFolder}/{OutName}.mp4'
 
-    # Read every .Tif files in the folder
+    # List and sort images by filename
+    image_files = sorted([img for img in os.listdir(SrcFolder) if img.endswith((".tif", ".png", ".jpg"))])
 
-    ImgType = os.path.splitext(os.listdir(SrcFolder)[0])[1]
-    if ImgType == ".tif":
-        images = [img for img in os.listdir(SrcFolder) if img.endswith(".tif")]
-    elif ImgType == ".png":
-        images = [img for img in sorted(
-            os.listdir(SrcFolder)) if img.endswith(".png")]
-    elif ImgType == ".jpg":
-        images = [img for img in sorted(
-            os.listdir(SrcFolder)) if img.endswith(".jpg")]
-    else:
-        print("Not recongized image type")
+    if not image_files:
+        print("No images found in the source folder.")
+        return
 
-    # Fetch the frame shape(e.g height, width, layer)
-    frame = cv2.imread(os.path.join(SrcFolder, images[0]))
+    # Determine image type and read the first image to get dimensions
+    ImgType = os.path.splitext(image_files[0])[1]
+    frame = cv2.imread(os.path.join(SrcFolder, image_files[0]))
+    
+    if frame is None:
+        print(f"Error reading image file: {image_files[0]}")
+        return
+    
     height, width, layers = frame.shape
 
-    # Adjust output location
+    # Set up the video writer
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     video = cv2.VideoWriter(video_name, fourcc, FPS, (width, height))
 
-    # Convert images(.tif) into video(.avi)
-    for image in images:
-        video.write(cv2.imread(os.path.join(SrcFolder, image)))
+    # Write images to video
+    for image in image_files:
+        img_path = os.path.join(SrcFolder, image)
+        img = cv2.imread(img_path)
+        
+        if img is None:
+            print(f"Error reading image file: {image}")
+            continue
+        
+        video.write(img)
 
+    # Release video writer
     cv2.destroyAllWindows()
     video.release()
+    print(f"Video saved as {video_name}")
+
 
 
 def PNG2GIF(SrcFolder, OutFolder, OutName, ImgFormat="png", duration=120):
@@ -177,6 +186,15 @@ def Track(SrcFolder, DstFolder, GroupIndex):
     Corr = [0, 0, 0, 0, 0, 0, 0]  # x1, x2, y1, y2, centerx, centery, radius
     list_x, list_y = [], []
 
+    fig, ax_orig = plt.subplots()
+    
+    # Ensure index is within range
+    for index in range(len(list_x)):
+        if index < len(list_x) and index < len(list_y):
+            ax_orig.plot(list_x[index], list_y[index], 'ro', markersize=4)
+        else:
+            print(f"Index out of range: {index}")
+
     # ---------ROI section--------------------------------------------------------------------------------
     ROI_INDEX = np.random.randint(0, len(os.listdir(f"{SrcFolder}/{GroupIndex}")))
 
@@ -245,10 +263,7 @@ def Track(SrcFolder, DstFolder, GroupIndex):
     data.to_excel(f"{DstFolder}/Result_{GroupIndex}.xlsx",
                     sheet_name='XY', index=False)
 
-    # ---------Plot Figure--------------------------------------------------------------------------------
-    """ Some
-    
-    
+    # ---------Plot Figure-------------------------------------------------------------------------------  
     for filename in sorted(nfile):
         image_initial = np.asarray(cv2.imread(f"{SrcFolder}/{GroupIndex}/{filename}", 0))
         fig, (ax_orig, ax_corr) = plt.subplots(1, 2)
@@ -256,11 +271,11 @@ def Track(SrcFolder, DstFolder, GroupIndex):
         ax_orig.set_title(f'{filename} (Image)')
         ax_orig.set_axis_off()
 
-        index = sorted(os.listdir(f"{SrcFolder}/{GroupIndex}")).index(filename)
+        index = sorted(os.listdir(f"{SrcFolder}/{GroupIndex}")).index(filename)-1
         # Plot xy-center
         ax_orig.plot(list_x[index], list_y[index], 'ro', markersize=4)
         # Plot whole track
-        #ax_orig.plot(list_x[index-5:index], list_y[index-5:index],'g',marker='.',linewidth="1",markersize=5,alpha=0.8)
+        ax_orig.plot(list_x[index-5:index], list_y[index-5:index],'g',marker='.',linewidth="1",markersize=5,alpha=0.8)
 
         # Plot ROI reference
         ax_corr.imshow(output, cmap="gray")
@@ -271,7 +286,7 @@ def Track(SrcFolder, DstFolder, GroupIndex):
         plt.savefig(f"{DstFolder}/{GroupIndex}/{filename}.png",bbox_inches='tight')
         plt.cla()
         plt.close(fig)
-    """
+    
     print(f"image shape:{image_initial.shape}, ROI:{roi.shape}\n")
     return list_x, list_y
 
@@ -303,7 +318,7 @@ def MSD(X, Y, FPS, DstFolder, GroupIndex, ImgShow=False):
         #print(dx1,dy1)
         avg_x, avg_y = float(sum(dx1)/len(dx1)), float(sum(dy1)/len(dy1))
         sol.append(avg_x + avg_y)
-        # print(avg_x,avg_y)
+        #print(avg_x,avg_y)
 
     sns.set_theme(color_codes=True)
     fig = plt.figure(figsize=(8, 5))
@@ -321,7 +336,7 @@ def MSD(X, Y, FPS, DstFolder, GroupIndex, ImgShow=False):
     plt.ylabel("MSD(square of meters)", fontsize=15)
     plt.savefig(f"{DstFolder}/Plot/{GroupIndex}.png")
 
-    # plt.tight_layout()
+    plt.tight_layout()
     if ImgShow == True:
         plt.show()
     
@@ -459,7 +474,7 @@ def Track2(SrcFolder, DstFolder, GroupIndex):
     # --------Return X,Y from first picture----------------------------------------------------------------
     TrackResult = GetCenter(f"{root}/{''.join(first_image_name)}", GroupIndex)
     TrackX.append(TrackResult[0]); TrackY.append(TrackResult[1])
-    ### print(f"=> TrackX:{TrackX}, TrackY:{TrackY}")
+    print(f"=> TrackX:{TrackX}, TrackY:{TrackY}")
 
     # --------Rest sequential image will track by the former image----------------------------------------
     for image in sorted(os.listdir(root))[1:]:

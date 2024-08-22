@@ -21,21 +21,22 @@ NUM = len(groups) # 7 experiments in total
 EnvSetup(f'./Export')
 MakeSubFolders(f'./Export', folders) # Create subfolders groups "RawData","TrackFile"
 MakeSubFolders(f'./Brownian_motion', groups) # Create subfolders groups "1", "2","3"...
+MakeSubFolders(f'./Export/TrackFile/Reserved', groups)
 MakeSubFolders(f'./Export/TrackFile', subfolders) # Create subfolders "ROI", "GIF", "Plot" ,"Reserved"
 
 #----Step2:Convert to animation----------------------#
-for index in groups[1:2]:
+for index in groups[:]:
     SrcFolder = f"{Root1}/{index}"
     OutFolder =f"{Root2}/RawData"
-    # if _ANI == True|1:
-        # IMG2MP4(SrcFolder, OutFolder, OutName=f'{index}', FPS=5)
+    #if _ANI == False:
+        #IMG2MP4(SrcFolder, OutFolder, OutName=f'{index}', FPS=20)
 
 #----Step3:Track through ROI-------------------------# 
-METHOD = 1; FPS=10
+METHOD = 2; FPS=20
 _SrcFolder = "./Brownian_motion" # import analysis file
 _DstFolder = "./Export/TrackFile/Reserved" # Saved tracking result by frame
 
-for index in groups[:]:
+for index in groups[0:1]:
     if METHOD == 1:
         X,Y = Track(_SrcFolder, _DstFolder, GroupIndex=index)   
     elif METHOD == 2:
@@ -43,10 +44,10 @@ for index in groups[:]:
     else:
         print("Please check METHOD")
     
-    MSD(X ,Y, FPS, "./Export/TrackFile", GroupIndex=index, ImgShow=True)
+    MSD(X ,Y, FPS, "./Export/TrackFile", GroupIndex=index, ImgShow=False)
     
-    if _Export  == True|1:
-        #print(f"=> Converting into animation...")
+    if _Export  == True:
+        print(f"=> Converting into animation...")
         Src = f"{Root3}/{index}"
         FilenName = f"Track_{index}"
         #IMG2MP4(Src, f"{Root2}/{index}", FilenName, FPS=20)

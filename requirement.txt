@@ -1,8 +1,8 @@
 ##### Core scientific packages
-#jupyter
+jupyter
 matplotlib
 numpy
-#pandas
+pandas
 scipy
 seaborn
 opencv-python
